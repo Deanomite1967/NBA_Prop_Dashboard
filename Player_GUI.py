@@ -6,6 +6,18 @@ from datetime import datetime
 import altair as alt
 
 @st.cache_data(show_spinner=False)
+def get_season_string():
+    today = datetime.today()
+    if today.month >= 10:  # NBA season starts in October
+        start_year = today.year
+        end_year = today.year + 1
+    else:
+        start_year = today.year - 1
+        end_year = today.year
+    return f"{start_year}-{str(end_year)[-2:]}"
+
+
+@st.cache_data(show_spinner=False)
 def get_player_id(name):
     matches = players.find_players_by_full_name(name)
     return matches[0]["id"] if matches else None
@@ -17,11 +29,12 @@ def get_player_position(player_id):
 
 @st.cache_data(show_spinner=False)
 def get_last_10_games(player_id):
-    current_year = datetime.now().year
-    current_season = f"{current_year - 1}-{str(current_year)[-2:]}"
-    previous_season = f"{current_year - 2}-{str(current_year - 1)[-2:]}"
+    current_season = get_season_string()
+    previous_season = f"{int(current_season[:4]) - 1}-{current_season[:2]}"
+
     logs_current = playergamelog.PlayerGameLog(player_id=player_id, season=current_season).get_data_frames()[0]
     logs_previous = playergamelog.PlayerGameLog(player_id=player_id, season=previous_season).get_data_frames()[0]
+
     all_logs = pd.concat([logs_current, logs_previous])
     all_logs["GAME_DATE"] = pd.to_datetime(all_logs["GAME_DATE"])
     all_logs = all_logs.sort_values("GAME_DATE", ascending=False)
@@ -258,4 +271,5 @@ if st.button("Fetch Stats"):
                     st.caption(f"{pct_above(stats_df, stat, line):.1f}% of games over {line} {stat.lower()}")
 
             except Exception as e:
+
                 st.error(f"Error fetching data: {e}")
